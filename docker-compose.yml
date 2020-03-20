@@ -1,0 +1,57 @@
+version: '3.7'
+services:
+
+    keycloak:
+        image: jboss/keycloak:8.0.1
+        container_name: keycloak
+        environment:
+          - KEYCLOAK_USER=admin
+          - KEYCLOAK_PASSWORD=MaE12345
+        networks: 
+            intranet:
+                ipv4_address: 172.16.238.9
+        ports:
+          - "8080:8080"
+        healthcheck:
+          test: "curl -f http://localhost:8080/auth || exit 1"
+          start_period: 10s
+
+    ldap-host:
+        image: osixia/openldap:1.3.0
+        container_name: ldap-host
+        environment:
+            - LDAP_ORGANISATION="MyCompany Inc."
+            - LDAP_DOMAIN=localhost.diplomatie.gouv.fr
+            - LDAP_BASE_DN=dc=localhost,dc=diplomatie,dc=gouv,dc=fr
+            - LDAP_ADMIN_PASSWORD=MaE12345
+            - LDAP_CONFIG_PASSWORD=MaE12345
+        networks: 
+            intranet:
+                ipv4_address: 172.16.238.10
+        volumes: 
+            - ./volumes/ldap/data:/var/lib/ldap
+            - ./volumes/ldap/config:/etc/ldap/slapd.d
+        ports:
+            - "389:389"
+            - "636:636"
+    
+    phpldapadmin-service:
+        image: osixia/phpldapadmin:0.9.0
+        container_name: phpldapadmin-service
+        environment:
+            - PHPLDAPADMIN_LDAP_HOSTS=ldap-host
+            - LDAP_ADMIN_PASSWORD=MaE12345
+        networks: 
+            intranet:
+                ipv4_address: 172.16.238.11
+        ports:
+            - "6443:443"
+        depends_on:
+            - ldap-host
+    
+networks:
+    intranet:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 172.16.238.0/24
